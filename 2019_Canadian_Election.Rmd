@@ -1,0 +1,237 @@
+---
+title: 'What would be different to 2019 Canadian Federal Election if “everyone” had
+  Jiang'
+  voted? Predicting the change to using a Multilevel Poststratification" author: "Biqi
+author: "Biqi Jiang"
+date: "December 22/2020"
+output: html_document
+bibliography: references.bib
+nocite: '@*'
+---
+
+``````{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse); library(knitr); library(scales)
+```
+
+# Abstract
+In this paper, we used a logistic regression model with poststratification to predict the impact of the number of participants on the 2019 Canadian Federal Election. It’s useful to learn about the importance of turnout based on my model and results.
+Keywords: 2019 Canadian Federal Election, turnout, Canada, vote 
+\newpage
+
+# Introduction
+For democracy, voting and elections are very common. The 2019 Canadian Election Study has been a large-scale survey of citizens in each election year since 1965 @cesR. We analyzed the 2019 Canadian Federal Election and poststratification census data to identify how the 2019 Canadian Federal Election would have been different if everyone had voted. Multilevel regression with poststratification (MRP) can know differences between a target population and a sample population to correcting model estimates.
+This analysis aims to use a statistical technique which is multivariable regression with post-stratification to estimate how turnout affects the result of the 2019 Canadian Federal Election. The outcome variable that we were interested in was whether the 2019 Canadian Federal Election would have been different if “everyone” has voted @cesR.  It was a binary outcome. First, we are using a few demographic data to fit a multivariable logistic regression model to fit our outcome variable. Next, we poststratification of the selected sample with the variables in the logistic regression model. We then assigned sampled units into different cells based on combinations of the variables. We used the logistic regression model to predict whether the 2019 Canadian Federal Election would have been different if “everyone” has voted.
+\newpage
+
+# Data
+```{r}
+install.packages("devtools")
+library(devtools)
+devtools::install_github("hodgettsp/cesR")
+
+install.packages("labelled")
+
+library(cesR)
+library(labelled)
+
+# call 2019 CES online survery
+get_ces("ces2019_web")
+
+# convert values to factor type
+ces2019_web <- to_factor(ces2019_web)
+head(ces2019_web)
+```
+
+```{r}
+# import the clean survey Data
+survey_data <- get_ces("ces2019_web")
+# import the clean census Data
+census_data <- write_csv(gss, "gss.csv")
+
+# data manipulation
+survey_data$sex <- survey_data$gender
+
+```
+
+```{r fig, fig.cap="Proportion of sampled individuals in the survey data who would vote for the  2019 Canadian Federal Election by gender"}
+plot(ces2019_web$cps19_gender,xlab='gender',ylab='frequency',main='Vote for the 2019 Canadian Federal Election by gender',fill="steelblue", col="grey")
+```
+```{r fig2, fig.cap="Proportion of sampled individuals in the survey data who would vote for the  2019 Canadian Federal Election by age"}
+boxplot(ces2019_web$pes19_age,xlab='age',ylab='',main='Vote for the 2019 Canadian Federal Election by age',fill="steelblue", col="grey")
+```
+```{r fig3, fig.cap="Proportion of sampled individuals in the survey data who would vote for the  2019 Canadian Federal Election by province"}
+plot(ces2019_web$cps19_province,xlab='province',ylab='frequency',main='Vote for the 2019 Canadian Federal Election by province',fill="steelblue", col="grey")
+```
+```{r fig4, fig.cap="Proportion of sampled individuals in the survey data who would vote for the  2019 Canadian Federal Election by Party"}
+barplot(table(ces2019_web$pes19_votechoice2019))
+```
+**Post-stratification dataset**
+We used poststratification data from the census dataset General Social Survey (GSS) on the Family from 2017. The 2017 GSS was collection from February 1, 2017 to November 30, 2017, is a sample survey of cross-sectional survey design. The target population includes all non-institutionalized persons over 15 years old, living in the 10 provinces of Canada. The collection method was telephone interview. Data are susceptible to non-sampling errors, non-response bias, coverage error, and other non-sampling errors. 
+
+\newpage
+
+# Model
+We used a logistic regression model with the response variable being change the result or not. The logistic regression model models the probability of a particular class or event happening such as pass/fail, win/lose, alive/dead or healthy/sick. In our case, it was made a change to the result of the 2019 Canadian Federal Election if everyone had voted or it doesn’t affect the results of the 2019 Canadian Federal Election if everyone had voted. First, we fit a multilevel logistic regression model to our survey dataset to estimate how likely a voter is to vote for the 2019 Canadian Federal Election based their demographic characteristics (gender, age, education) and the province where they live. We conducted post-stratification, where we used the logistic regression model, we built to predict the probability of everyone voting for the 2019 Canadian Federal Election @little1993post. We post-stratified the survey sample and the population. In summary, the logistic regression allowed us to estimate trustworthy relationships between opinion and demographic and geographic variables of a survey sample, and poststratification corrects for differences that exist between the survey sample and the target population @smith1991post.
+\newpage
+
+# Results
+```{r}
+library(pROC)
+gender <- ces2019_web$cps19_gender
+province <- ces2019_web$cps19_province
+education <- ces2019_web$cps19_education
+party <- ces2019_web$cps19_imp_iss_party
+consent <- ces2019_web$cps19_consent
+# build logistic regression model
+logit_mod <- glm(consent~gender+province+education+party,data=survey_data,family="binomial")
+# calculate estimated probabilities from model
+est <- predict(logit_mod, type=c("response")); survey_data$est <- est
+
+summary(logit_mod)
+plot(logit_mod)
+
+```
+For residuals vs fitted in figure, the standard residuals have a clear linear pattern, this
+indicates that there is some linearity between the response and the predictors. We can use
+the Q-Q plot to check the normality assumption, and the bulk of the data along the middle
+line represent normality assumption is appropriate. For scale-location, the red
+line is linearity, and it means the constant variance is appropriate. The Residuals vs.
+Leverage plots help identify influential data points on the model.
+
+
+\newpage
+
+# Discussion
+We used the survey data from the 2019 Canadian Election Study and poststratification data from the General Social Survey (GSS) on the Family from 2017. We used a multivarible logistic regression model with demographic variables age, gender, province, and party variables state as covariates. We then produced a final estimate from the model through poststratification to correct for differences between the sample and the target populaton. 
+
+**Weaknesses**
+The weakness in this study is the lack of ability to generalize the results. The generalizability of our results is limited for the following reasons. Firstly, We used two survey datasets and these datasets were designed specifically for different reasons. Secondly, we the prediction ability of our model is limited. Finally, the 2016 census data source is very limited. 
+
+**Next steps**
+The next steps would be fit different models with different combinations of variables and use appropriate techniques to compare models and choose the best one for the data.
+
+\newpage
+# References
+
+
+
+
+---
+title: "What would be different to 2019 Canadian Federal Election if “everyone” had voted? Predicting the change to using a Multilevel Poststratification"
+author: "Biqi Jiang"
+date: "22 December 2020"
+output:
+  pdf_document: default
+  bookdown::pdf_document2: default
+bibliography: references.bib
+nocite: '@*'
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse); library(knitr); library(scales)
+```
+
+# Abstract
+In this paper, we used a logistic regression model with poststratification to predict the impact of the number of participants on the 2019 Canadian Federal Election. It’s useful to learn about the importance of turnout based on my model and results.
+Keywords: 2019 Canadian Federal Election, turnout, Canada, vote 
+\newpage
+
+# Introduction
+For democracy, voting and elections are very common. The 2019 Canadian Election Study has been a large-scale survey of citizens in each election year since 1965 @cesR. We analyzed the 2019 Canadian Federal Election and poststratification census data to identify how the 2019 Canadian Federal Election would have been different if everyone had voted. Multilevel regression with poststratification (MRP) can know differences between a target population and a sample population to correcting model estimates.
+This analysis aims to use a statistical technique which is multivariable regression with post-stratification to estimate how turnout affects the result of the 2019 Canadian Federal Election. The outcome variable that we were interested in was whether the 2019 Canadian Federal Election would have been different if “everyone” has voted @cesR.  It was a binary outcome. First, we are using a few demographic data to fit a multivariable logistic regression model to fit our outcome variable. Next, we poststratification of the selected sample with the variables in the logistic regression model. We then assigned sampled units into different cells based on combinations of the variables. We used the logistic regression model to predict whether the 2019 Canadian Federal Election would have been different if “everyone” has voted.
+\newpage
+
+# Data
+```{r}
+install.packages("devtools")
+library(devtools)
+devtools::install_github("hodgettsp/cesR")
+
+install.packages("labelled")
+
+library(cesR)
+library(labelled)
+
+# call 2019 CES online survery
+get_ces("ces2019_web")
+
+# convert values to factor type
+ces2019_web <- to_factor(ces2019_web)
+head(ces2019_web)
+```
+
+```{r}
+# import the clean survey Data
+survey_data <- get_ces("ces2019_web")
+# import the clean census Data
+census_data <- write_csv(gss, "gss.csv")
+
+# data manipulation
+survey_data$sex <- survey_data$gender
+
+```
+
+```{r fig, fig.cap="Proportion of sampled individuals in the survey data who would vote for the  2019 Canadian Federal Election by gender"}
+plot(ces2019_web$cps19_gender,xlab='gender',ylab='frequency',main='Vote for the 2019 Canadian Federal Election by gender',fill="steelblue", col="grey")
+```
+```{r fig2, fig.cap="Proportion of sampled individuals in the survey data who would vote for the  2019 Canadian Federal Election by age"}
+boxplot(ces2019_web$pes19_age,xlab='age',ylab='',main='Vote for the 2019 Canadian Federal Election by age',fill="steelblue", col="grey")
+```
+```{r fig3, fig.cap="Proportion of sampled individuals in the survey data who would vote for the  2019 Canadian Federal Election by province"}
+plot(ces2019_web$cps19_province,xlab='province',ylab='frequency',main='Vote for the 2019 Canadian Federal Election by province',fill="steelblue", col="grey")
+```
+```{r fig4, fig.cap="Proportion of sampled individuals in the survey data who would vote for the  2019 Canadian Federal Election by Party"}
+barplot(table(ces2019_web$pes19_votechoice2019))
+```
+**Post-stratification dataset**
+We used poststratification data from the census dataset General Social Survey (GSS) on the Family from 2017. The 2017 GSS was collection from February 1, 2017 to November 30, 2017, is a sample survey of cross-sectional survey design. The target population includes all non-institutionalized persons over 15 years old, living in the 10 provinces of Canada. The collection method was telephone interview. Data are susceptible to non-sampling errors, non-response bias, coverage error, and other non-sampling errors. 
+
+\newpage
+
+# Model
+We used a logistic regression model with the response variable being change the result or not. The logistic regression model models the probability of a particular class or event happening such as pass/fail, win/lose, alive/dead or healthy/sick. In our case, it was made a change to the result of the 2019 Canadian Federal Election if everyone had voted or it doesn’t affect the results of the 2019 Canadian Federal Election if everyone had voted. First, we fit a multilevel logistic regression model to our survey dataset to estimate how likely a voter is to vote for the 2019 Canadian Federal Election based their demographic characteristics (gender, age, education) and the province where they live. We conducted post-stratification, where we used the logistic regression model, we built to predict the probability of everyone voting for the 2019 Canadian Federal Election @little1993post. We post-stratified the survey sample and the population. In summary, the logistic regression allowed us to estimate trustworthy relationships between opinion and demographic and geographic variables of a survey sample, and poststratification corrects for differences that exist between the survey sample and the target population @smith1991post.
+\newpage
+
+# Results
+```{r}
+library(pROC)
+gender <- ces2019_web$cps19_gender
+province <- ces2019_web$cps19_province
+education <- ces2019_web$cps19_education
+party <- ces2019_web$cps19_imp_iss_party
+consent <- ces2019_web$cps19_consent
+# build logistic regression model
+logit_mod <- glm(consent~gender+province+education+party,data=survey_data,family="binomial")
+# calculate estimated probabilities from model
+est <- predict(logit_mod, type=c("response")); survey_data$est <- est
+
+summary(logit_mod)
+plot(logit_mod)
+
+```
+For residuals vs fitted in figure, the standard residuals have a clear linear pattern, this
+indicates that there is some linearity between the response and the predictors. We can use
+the Q-Q plot to check the normality assumption, and the bulk of the data along the middle
+line represent normality assumption is appropriate. For scale-location, the red
+line is linearity, and it means the constant variance is appropriate. The Residuals vs.
+Leverage plots help identify influential data points on the model.
+
+
+\newpage
+
+# Discussion
+We used the survey data from the 2019 Canadian Election Study and poststratification data from the General Social Survey (GSS) on the Family from 2017. We used a multivarible logistic regression model with demographic variables age, gender, province, and party variables state as covariates. We then produced a final estimate from the model through poststratification to correct for differences between the sample and the target populaton. 
+
+**Weaknesses**
+The weakness in this study is the lack of ability to generalize the results. The generalizability of our results is limited for the following reasons. Firstly, We used two survey datasets and these datasets were designed specifically for different reasons. Secondly, we the prediction ability of our model is limited. Finally, the 2016 census data source is very limited. 
+
+**Next steps**
+The next steps would be fit different models with different combinations of variables and use appropriate techniques to compare models and choose the best one for the data.
+
+\newpage
+# References
+```
+
